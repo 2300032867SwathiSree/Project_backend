@@ -1,7 +1,6 @@
 package art.model;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
 import art.repository.UsersRepository;
@@ -11,36 +10,38 @@ public class UsersManager {
     @Autowired
     private UsersRepository userRepository;
 
-    private BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder(); // ✅ Initialize properly
-
-    // ✅ Improved User Signup (No duplicate password hashing)
+    // ✅ User Signup (stores plain text password)
     public String addUser(Users user) {    
         if (userRepository.existsById(user.getEmail())) {
             return "401::Email already exists";    
         }
         
-        user.setPassword(passwordEncoder.encode(user.getPassword())); // Hash before saving
+        user.setPassword(user.getPassword()); // store as plain text
         userRepository.save(user);
         return "200::User Registered Successfully";
     }
 
-    // ✅ Secure Password Recovery (Avoid exposing passwords directly)
+    // ✅ Password Recovery (still generic, no direct exposure)
     public String recoverPassword(String email) {
         Optional<Users> optionalUser = userRepository.findByEmail(email);
         if (optionalUser.isPresent()) {
-            return String.format("Dear %s, please follow the password reset process.", optionalUser.get().getFullname());
+            return String.format("Dear %s, please follow the password reset process.", 
+                                 optionalUser.get().getFullname());
         }
         return "404::Email not found";
     }
 
-    // ✅ Fix Validate Credentials Logic (Ensures hashed password comparison)
+    // ✅ Validate Credentials (direct string comparison)
     public boolean validateCredentials(String email, String password) {
         Optional<Users> optionalUser = userRepository.findByEmail(email);
-        return optionalUser.isPresent() && passwordEncoder.matches(password, optionalUser.get().getPassword());
+        return optionalUser.isPresent() && 
+               password.equals(optionalUser.get().getPassword());
     }
 
-    // ✅ Improved Get Full Name Method
+    // ✅ Get Full Name
     public String getFullname(String email) {
-        return userRepository.findByEmail(email).map(Users::getFullname).orElse("404::User not found");
+        return userRepository.findByEmail(email)
+                             .map(Users::getFullname)
+                             .orElse("404::User not found");
     }
 }
